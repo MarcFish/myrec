@@ -2,8 +2,6 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
 
-from .model import Model
-
 
 class UserAutoRec(Model):
     def __init__(self, data, hidden_size=128, lr=0.01, batch_size=1024, epochs=1000):

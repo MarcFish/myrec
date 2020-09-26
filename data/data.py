@@ -5,8 +5,8 @@ AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 class Data:
     def __init__(self, filepath='./', batch_size=512, only_rating=False, buffer_size=1024):
-        self.user_size = 6040
-        self.movie_size = 3883
+        self.user_size = 7000
+        self.movie_size = 4000
         self.zip_size = 3439
         self.occ_size = 21
         self.cat_size = 18
@@ -23,7 +23,7 @@ class Data:
             return self.train.map(self.train_parse, AUTOTUNE).batch(self.batch_size).prefetch(self.buffer_size)
 
     def get_test(self):
-        return self.test.map(self.test_parse, AUTOTUNE).batch(self.batch_size).prefetch()
+        return self.test.map(self.test_parse, AUTOTUNE).batch(self.batch_size).prefetch(self.buffer_size)
 
     def test_parse(self, example):
         feature_description = {
