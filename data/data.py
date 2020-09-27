@@ -23,7 +23,11 @@ class Data:
             return self.train.map(self.train_parse, AUTOTUNE).batch(self.batch_size).prefetch(self.buffer_size)
 
     def get_test(self):
-        return self.test.map(self.test_parse, AUTOTUNE).batch(self.batch_size).prefetch(self.buffer_size)
+        if self.only_rating:
+            return self.test.map(self.test_parse, AUTOTUNE).batch(self.batch_size).prefetch(self.buffer_size)
+        else:
+            return self.test.map(self.train_parse, AUTOTUNE).batch(self.batch_size).prefetch(self.buffer_size)
+
 
     def test_parse(self, example):
         feature_description = {

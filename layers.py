@@ -4,9 +4,11 @@ import numpy as np
 
 
 class FMLayer(keras.layers.Layer):
-    def __init__(self, embed_size=128):
+    def __init__(self, k=10, w_lr=1e-2, v_lr=1e-2):
         super(FMLayer, self).__init__()
-        self.embed_size = 128
+        self.k = k
+        self.w_lr = w_lr
+        self.v_lr = v_lr
 
     def build(self, input_shape):
         self.w0 = self.add_weight(name='w0', shape=(1,),
@@ -14,11 +16,11 @@ class FMLayer(keras.layers.Layer):
                                   trainable=True)
         self.W = self.add_weight(name='w', shape=(input_shape[-1], 1),
                                  initializer='he_uniform',
-                                 regularizer=keras.regularizers.l2(),
+                                 regularizer=keras.regularizers.l2(self.w_lr),
                                  trainable=True)
         self.V = self.add_weight(name='V', shape=(self.k, input_shape[-1]),
                                  initializer='he_uniform',
-                                 regularizer=keras.regularizers.l2(),
+                                 regularizer=keras.regularizers.l2(self.v_lr),
                                  trainable=True)
 
     def call(self, inputs):
@@ -32,15 +34,45 @@ class FMLayer(keras.layers.Layer):
 
 
 class ResidualLayer(keras.layers.Layer):
-    def __init__(self, unit1, unit2):
+    def __init__(self, unit1s, unit2s):
         super(ResidualLayer, self).__init__()
-        self.layer1 = keras.layers.Dense(units=unit1)
-        self.layer2 = keras.layers.Dense(units=unit2)
+        self.layer1 = keras.Sequential()
+        self.layer2 = keras.Sequential()
+        self.unit1s = unit1s
+        self.unit2s = unit2s
+        if type(unit1s) == list:
+            for unit in unit1s:
+                self.layer1.add(keras.layers.Dense(units=unit))
+                self.layer1.add(keras.layers.LeakyReLU(0.2))
+                self.layer1.add(keras.layers.BatchNormalization())
+        else:
+            self.layer1.add(keras.layers.Dense(units=unit1s))
+            self.layer1.add(keras.layers.LeakyReLU(0.2))
+            self.layer1.add(keras.layers.BatchNormalization())
+        if type(unit2s) == list:
+            for unit in unit2s:
+                self.layer2.add(keras.layers.Dense(units=unit))
+                self.layer2.add(keras.layers.LeakyReLU(0.2))
+                self.layer2.add(keras.layers.BatchNormalization())
+        else:
+            self.layer2.add(keras.layers.Dense(units=unit2s))
+            self.layer2.add(keras.layers.LeakyReLU(0.2))
+            self.layer2.add(keras.layers.BatchNormalization())
+
+    def build(self, input_shape):
+        if type(self.unit2s)==list:
+            if input_shape[-1]!=self.unit2s[-1]:
+                raise Exception("Dim not equal")
+        else:
+            if input_shape[-1]!= self.unit2s:
+                raise Exception("Dim not equal")
+        self.built = True
 
     def call(self, inputs):
         x = self.layer1(inputs)
-        x = keras.layers.LeakyReLU(0.2)(x)
         x = self.layer2(x)
         outputs = keras.layers.LeakyReLU(0.2)(x + inputs)
+        outputs = keras.layers.BatchNormalization()(outputs)
+        return outputs
 
 

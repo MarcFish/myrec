@@ -5,7 +5,7 @@ from data import Data
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--result",type=str,default='../results/result.txt')
-parser.add_argument("--file",type=str,default='../data/')
+parser.add_argument("--file",type=str,default='E:/project/rec_movielens/data/')
 parser.add_argument("--lr_u",type=float,default=0.01)
 parser.add_argument("--lr_i",type=float,default=0.01)
 parser.add_argument("--embed_size",type=int,default=128)

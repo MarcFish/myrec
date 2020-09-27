@@ -2,9 +2,6 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
 
-from .model import Model
-
-
 class _GMF(keras.Model):
     def __init__(self, user_size, item_size, embed_size=128):
         super(_GMF, self).__init__()
