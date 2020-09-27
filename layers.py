@@ -30,7 +30,7 @@ class FMLayer(keras.layers.Layer):
             tf.matmul(tf.pow(inputs, 2), tf.pow(tf.transpose(self.V), 2)),
             axis=1, keepdims=True)
 
-        return first_order + second_order
+        return tf.squeeze(first_order + second_order)
 
 
 class ResidualLayer(keras.layers.Layer):
@@ -58,6 +58,8 @@ class ResidualLayer(keras.layers.Layer):
             self.layer2.add(keras.layers.Dense(units=unit2s))
             self.layer2.add(keras.layers.LeakyReLU(0.2))
             self.layer2.add(keras.layers.BatchNormalization())
+        self.leakyrelu = keras.layers.LeakyReLU(0.2)
+        self.bn = keras.layers.BatchNormalization()
 
     def build(self, input_shape):
         if type(self.unit2s)==list:
@@ -71,8 +73,8 @@ class ResidualLayer(keras.layers.Layer):
     def call(self, inputs):
         x = self.layer1(inputs)
         x = self.layer2(x)
-        outputs = keras.layers.LeakyReLU(0.2)(x + inputs)
-        outputs = keras.layers.BatchNormalization()(outputs)
+        outputs = self.leakyrelu(x + inputs)
+        outputs = self.bn(outputs)
         return outputs
 
 

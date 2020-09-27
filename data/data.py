@@ -10,6 +10,7 @@ class Data:
         self.zip_size = 3439
         self.occ_size = 21
         self.cat_size = 18
+        self.feature_list = [self.user_size,self.movie_size,2,self.occ_size, self.zip_size]
         self.batch_size = batch_size
         self.buffer_size = buffer_size
         self.train = tf.data.TFRecordDataset(filepath+'train.tfrecord')
@@ -51,4 +52,4 @@ class Data:
         }
 
         feature = tf.io.parse_single_example(example, feature_description)
-        return (feature['user'], feature['movie'], feature['gender'], feature['occupation'], feature['zip_code'], feature['cats'], feature['gender']), feature['rating']
+        return (feature['user'], feature['movie'], feature['gender'], feature['occupation'], feature['zip_code']), feature['rating']
