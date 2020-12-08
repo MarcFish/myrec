@@ -1,34 +1,57 @@
 import tensorflow as tf
 import tensorflow.keras as keras
-import numpy as np
+
+
+class CINLayer(keras.layers.Layer):
+    def __init__(self, units=[32, 32, 32, 32]):
+        self.units = units
+        super(CINLayer, self).__init__()
+
+    def build(self, input_shape):
+        if len(input_shape) != 3:
+            raise Exception("dim wrong")
+        self.ws = list()
+        self.bs = list()
+        self.field_nums = [input_shape[1]]
+        for unit in self.units:
+            w = self.add_weight(shape=(unit, self.field_nums[0], self.field_nums[-1]))
+            b = self.add_weight(shape=(unit,))
+            self.ws.append(w)
+            self.bs.append(b)
+            self.field_nums.append(unit)
+        super(CINLayer, self).__init__(input_shape)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[0], sum(self.units)
+
+    def call(self, inputs):
+        hidden_inputs = [inputs]
+        for w, b in zip(self.ws, self.bs):
+            out = tf.einsum("bid, bmd, jim->bjd", hidden_inputs[0], hidden_inputs[-1], w)
+            out = tf.nn.bias_add(out, b, data_format="NC...")
+            out = tf.nn.leaky_relu(out)
+            hidden_inputs.append(out)
+        out = tf.concat(hidden_inputs[1:], axis=1)
+        out = tf.reduce_sum(out, axis=-1, keepdims=False)
+        return out
 
 
 class FMLayer(keras.layers.Layer):
-    def __init__(self, k=10, w_lr=1e-2, v_lr=1e-2):
+    def __init__(self):
         super(FMLayer, self).__init__()
-        self.k = k
-        self.w_lr = w_lr
-        self.v_lr = v_lr
 
     def build(self, input_shape):
-        self.w0 = self.add_weight(name='w0', shape=(1,),
-                                  initializer=tf.zeros_initializer(),
-                                  trainable=True)
-        self.W = self.add_weight(name='w', shape=(input_shape[-1], 1),
-                                 initializer='he_uniform',
-                                 regularizer=keras.regularizers.l2(self.w_lr),
-                                 trainable=True)
-        self.V = self.add_weight(name='V', shape=(self.k, input_shape[-1]),
-                                 initializer='he_uniform',
-                                 regularizer=keras.regularizers.l2(self.v_lr),
-                                 trainable=True)
+        if len(input_shape) != 3:
+            raise Exception("dim wrong")
+        super(FMLayer, self).__init__(input_shape)
 
     def call(self, inputs):
-        first_order = self.w0 + tf.matmul(inputs, self.W)
-        second_order = 0.5 * tf.reduce_sum(
-            tf.pow(tf.matmul(inputs, tf.transpose(self.V)), 2) -
-            tf.matmul(tf.pow(inputs, 2), tf.pow(tf.transpose(self.V), 2)),
-            axis=1, keepdims=True)
+        square_of_sum = tf.square(tf.reduce_sum(
+            inputs, axis=1, keepdims=True))
+        sum_of_square = tf.reduce_sum(
+            inputs * inputs, axis=1, keepdims=True)
+        cross_term = square_of_sum - sum_of_square
+        cross_term = 0.5 * tf.reduce_sum(cross_term, axis=2, keepdims=False)
 
-        return tf.squeeze(first_order + second_order)
+        return cross_term
 

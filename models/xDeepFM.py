@@ -3,7 +3,7 @@ import tensorflow.keras as keras
 import tensorflow_addons as tfa
 import argparse
 from data import Data
-from layers import FMLayer
+from layers import CINLayer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--result",type=str,default='../results/result.txt')
@@ -18,10 +18,10 @@ parser.add_argument("--epochs",type=int,default=10)
 arg = parser.parse_args()
 
 
-class DeepFM(keras.Model):
-    def __init__(self, feature_list, k=10, hidden_unit=64, hidden_number=3):
-        super(DeepFM, self).__init__()
-        self.fm = FMLayer()
+class xDeepFM(keras.Model):
+    def __init__(self, feature_list, cin_layer_num=8, hidden_unit=64, hidden_number=3):
+        super(xDeepFM, self).__init__()
+        self.cin = CINLayer([hidden_unit]*cin_layer_num)
         self.deep = keras.Sequential()
         for unit in range(hidden_number):
             self.deep.add(keras.layers.Dense(hidden_unit))
@@ -33,7 +33,8 @@ class DeepFM(keras.Model):
                                                    output_dim=hidden_unit)
             for j,i in enumerate(feature_list)
         }
-        self.dense = keras.layers.Dense(1, activation=None)
+        self.deep_dense = keras.layers.Dense(1, activation=None)
+        self.cin_dense = keras.layers.Dense(1, activation=None)
         self.w1 = self.add_weight(name='wide_weight',
                                   shape=(1,),
                                   trainable=True)
@@ -50,16 +51,17 @@ class DeepFM(keras.Model):
             stack.append(tf.squeeze(self.embed_layers['embed_'+str(i)](v), axis=1))
         concat = tf.concat(stack, axis=-1)  # batch, feature_num * embed_size
         stack = tf.stack(stack, axis=1)  # batch, feature_num, embed_size
-        wide_outputs = self.fm(stack)
+        wide_outputs = self.cin(stack)
+        wide_outputs = self.cin_dense(wide_outputs)
         deep_outputs = self.deep(concat)
-        deep_outputs = self.dense(deep_outputs)
+        deep_outputs = self.deep_dense(deep_outputs)
         outputs = tf.nn.sigmoid(tf.add(tf.add(self.w1*wide_outputs, self.w2*deep_outputs), self.bias))
         return outputs
 
 
 data = Data(filepath=arg.file, batch_size=arg.batch)
-dfm = DeepFM(data.feature_list)
-dfm.compile(loss=keras.losses.binary_crossentropy, optimizer=tfa.optimizers.Lookahead(tfa.optimizers.AdamW(learning_rate=arg.lr, weight_decay=arg.l2)), metrics=[keras.metrics.MeanSquaredError()])
-dfm.fit(data.get_train(), epochs=arg.epochs)
-loss, metric = dfm.evaluate(data.get_test())
+xdfm = xDeepFM(data.feature_list)
+xdfm.compile(loss=keras.losses.binary_crossentropy, optimizer=tfa.optimizers.Lookahead(tfa.optimizers.AdamW(learning_rate=arg.lr, weight_decay=arg.l2)), metrics=[keras.metrics.MeanSquaredError()])
+xdfm.fit(data.get_train(), epochs=arg.epochs)
+loss, metric = xdfm.evaluate(data.get_test())
 print("mse:{:.4f}".format(metric))
