@@ -19,9 +19,9 @@ arg = parser.parse_args()
 
 
 class xDeepFM(keras.Model):
-    def __init__(self, feature_list, cin_layer_num=8, hidden_unit=64, hidden_number=3):
+    def __init__(self, feature_list, cin_layer_num=6, cin_unit=8, hidden_unit=32, hidden_number=3):
         super(xDeepFM, self).__init__()
-        self.cin = CINLayer([hidden_unit]*cin_layer_num)
+        self.cin = CINLayer([cin_unit]*cin_layer_num)
         self.deep = keras.Sequential()
         for unit in range(hidden_number):
             self.deep.add(keras.layers.Dense(hidden_unit))

@@ -19,7 +19,7 @@ arg = parser.parse_args()
 
 
 class DeepFM(keras.Model):
-    def __init__(self, feature_list, k=10, hidden_unit=64, hidden_number=3):
+    def __init__(self, feature_list, hidden_unit=64, hidden_number=3):
         super(DeepFM, self).__init__()
         self.fm = FMLayer()
         self.deep = keras.Sequential()
