@@ -1,14 +1,17 @@
 import tensorflow as tf
 import tensorflow.keras as keras
+import tensorflow_addons as tfa
 import argparse
 from data import Data
-from layers import FMLayer, ResidualLayer
+from layers import FMLayer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--result",type=str,default='../results/result.txt')
 parser.add_argument("--file",type=str,default='E:/project/rec_movielens/data/')
-parser.add_argument("--embed_size",type=int,default=128)
+parser.add_argument("--embed_size",type=int,default=32)
 parser.add_argument("--lr", type=float,default=1e-3)
+parser.add_argument("--l2", type=float,default=1e-4)
+parser.add_argument("--dropout", type=float, default=0.3)
 parser.add_argument("--batch",type=int,default=1024)
 parser.add_argument("--epochs",type=int,default=10)
 
@@ -16,16 +19,18 @@ arg = parser.parse_args()
 
 
 class DeepFM(keras.Model):
-    def __init__(self, feature_list, k=10, hidden_unit=128, hidden_number=3):
+    def __init__(self, feature_list, k=10, hidden_unit=64, hidden_number=3):
         super(DeepFM, self).__init__()
         self.fm = FMLayer(k)
         self.deep = keras.Sequential()
         for unit in range(hidden_number):
-            self.deep.add(ResidualLayer(hidden_unit, hidden_unit*len(feature_list)))
+            self.deep.add(keras.layers.Dense(hidden_unit))
+            self.deep.add(keras.layers.Dropout(arg.dropout))
+            self.deep.add(keras.layers.LayerNormalization())
+            self.deep.add(keras.layers.LeakyReLU(0.2))
         self.embed_layers = {
             'embed_'+str(j):keras.layers.Embedding(input_dim=i,
-                                                   output_dim=hidden_unit,
-                                                   embeddings_regularizer=keras.regularizers.L2(0.01))
+                                                   output_dim=hidden_unit)
             for j,i in enumerate(feature_list)
         }
         self.dense = keras.layers.Dense(1, activation=None)
@@ -53,7 +58,7 @@ class DeepFM(keras.Model):
 
 data = Data(filepath=arg.file, batch_size=arg.batch)
 dfm = DeepFM(data.feature_list)
-dfm.compile(loss=keras.losses.binary_crossentropy, optimizer=keras.optimizers.SGD(arg.lr), metrics=[keras.metrics.RootMeanSquaredError()])
+dfm.compile(loss=keras.losses.binary_crossentropy, optimizer=tfa.optimizers.Lookahead(tfa.optimizers.AdamW(learning_rate=arg.lr, weight_decay=arg.l2)), metrics=[keras.metrics.MeanSquaredError()])
 dfm.fit(data.get_train(), epochs=arg.epochs)
-loss, rmse = dfm.evaluate(data.get_test())
-print("RMSE:{:.4f}".format(rmse))
+loss, metric = dfm.evaluate(data.get_test())
+print("mse:{:.4f}".format(metric))
