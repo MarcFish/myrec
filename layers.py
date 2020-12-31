@@ -2,6 +2,30 @@ import tensorflow as tf
 import tensorflow.keras as keras
 
 
+class CrossLayer(keras.layers.Layer):
+    def __init__(self, layer_num=3):
+        self.layer_num = layer_num
+        super(CrossLayer, self).__init__()
+
+    def build(self, input_shape):
+        if len(input_shape) != 2:
+            raise Exception("dim wrong")
+        dim = input_shape[-1]
+        self.kernels = [self.add_weight(shape=(dim,)) for _ in range(self.layer_num)]
+        self.bias = [self.add_weight(shape=(dim,)) for _ in range(self.layer_num)]
+
+        super(CrossLayer, self).build(input_shape)
+
+    def call(self, inputs):
+        x0 = inputs
+        xl = x0
+        for i in range(self.layer_num):
+            xlw = tf.einsum("bi,i->b", xl, self.kernels[i])
+            dot_ = tf.einsum("bi,b->bi", x0, xlw)
+            xl = tf.nn.bias_add(dot_, self.bias[i]) + xl
+        return xl
+
+
 class CINLayer(keras.layers.Layer):
     def __init__(self, units=[32, 32, 32, 32]):
         self.units = units
