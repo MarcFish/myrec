@@ -2,6 +2,9 @@ import pandas as pd
 from tqdm import tqdm
 from collections import namedtuple, defaultdict
 from sklearn.preprocessing import LabelEncoder
+from myrec.utils import write_csv
+from sklearn.model_selection import train_test_split
+import numpy as np
 
 
 ratings = pd.read_csv("./ratings.csv")
@@ -37,4 +40,28 @@ for movie, tags in tqdm(movie_tag.items()):
     tags.sort(key=lambda x: x[1])
 
 for movie, tags in tqdm(movie_tag.items()):
-    movie_dict[movie].extend([tag for tag, _ in tags[-2:]])
+    l = [tag for tag, _ in tags[-2:]]
+    if len(l) < 2:
+        l = l.append(l[0])
+    movie_dict[movie].extend(l)
+
+content_list = [["user_id", "movie_id", "cat1", "cat2", "tag1", "tag2", "rating", "time"]]
+for row in tqdm(ratings.itertuples()):
+    user_id = row[1]
+    movie_id = row[2]
+    rating = row[3] / 5.0
+    time = row[4]
+    if len(movie_dict[movie_id]) < 4:
+        continue
+    l = [user_id, movie_id, *movie_dict[movie_id], rating, time]
+    content_list.append(l)
+
+content_list[1:].sort(key=lambda x: x[-1])
+for row in tqdm(content_list):
+    row.pop()
+train_list, test_list = train_test_split(content_list[1:])
+
+train_list.insert(0, content_list[0])
+test_list.insert(0, content_list[0])
+write_csv("train.csv", train_list)
+write_csv("test.csv", test_list)

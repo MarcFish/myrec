@@ -6,7 +6,7 @@ from data import Data
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--result",type=str,default='../results/result.txt')
-parser.add_argument("--file",type=str,default='E:/project/rec_movielens/data/')
+parser.add_argument("--file",type=str,default='E:/project/myrec/data/')
 parser.add_argument("--l2_u",type=float,default=0.01)
 parser.add_argument("--l2_i",type=float,default=0.01)
 parser.add_argument("--embed_size",type=int,default=32)
@@ -33,6 +33,7 @@ class MF(keras.Model):
                                                       embeddings_initializer='he_uniform')
 
     def call(self, inputs):
+        inputs = tf.split(inputs, inputs.shape[-1], axis=-1)
         user_batch = inputs[0]
         item_batch = inputs[1]
         user_embeddings = tf.squeeze(self.user_embeddings(user_batch))

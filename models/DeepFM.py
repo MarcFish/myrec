@@ -7,7 +7,7 @@ from layers import FMLayer
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--result",type=str,default='../results/result.txt')
-parser.add_argument("--file",type=str,default='E:/project/rec_movielens/data/')
+parser.add_argument("--file",type=str,default='E:/project/myrec/data/')
 parser.add_argument("--embed_size",type=int,default=32)
 parser.add_argument("--lr", type=float,default=1e-3)
 parser.add_argument("--l2", type=float,default=1e-4)
@@ -46,7 +46,7 @@ class DeepFM(keras.Model):
 
     def call(self, inputs):
         stack = list()
-        for i, v in enumerate(inputs):
+        for i, v in enumerate(tf.split(inputs, inputs.shape[-1], axis=-1)):
             stack.append(tf.squeeze(self.embed_layers['embed_'+str(i)](v), axis=1))
         concat = tf.concat(stack, axis=-1)  # batch, feature_num * embed_size
         stack = tf.stack(stack, axis=1)  # batch, feature_num, embed_size
@@ -59,7 +59,7 @@ class DeepFM(keras.Model):
 
 data = Data(filepath=arg.file, batch_size=arg.batch)
 dfm = DeepFM(data.feature_list)
-dfm.compile(loss=keras.losses.binary_crossentropy, optimizer=tfa.optimizers.Lookahead(tfa.optimizers.AdamW(learning_rate=arg.lr, weight_decay=arg.l2)), metrics=[keras.metrics.MeanSquaredError()])
+dfm.compile(loss=keras.losses.MSE, optimizer=tfa.optimizers.Lookahead(tfa.optimizers.AdamW(learning_rate=arg.lr, weight_decay=arg.l2)), metrics=[keras.metrics.MeanSquaredError()])
 dfm.fit(data.get_train(), epochs=arg.epochs)
 loss, metric = dfm.evaluate(data.get_test())
 print("mse:{:.4f}".format(metric))
